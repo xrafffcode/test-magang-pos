@@ -45,4 +45,9 @@ class Product extends Model
     {
         return number_format($this->profit_percentage, 2, ',', '.') . '%';
     }
+
+    public function order_items()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
 }

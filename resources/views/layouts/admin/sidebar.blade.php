@@ -69,6 +69,15 @@
                     </li>
                 @endif
 
+                @if (check_authorized('008C|009R'))
+                    <li class="sidebar-item {{ request()->segment(2) == 'sales' ? 'active' : '' }}">
+                        <a href="{{ route('app.sales.index') }}" class='sidebar-link'>
+                            <i class="bi bi-cash"></i>
+                            <span>Sales</span>
+                        </a>
+                    </li>
+                @endif
+
                 @if (check_authorized('005S'))
                     <li class="sidebar-item {{ request()->segment(2) == 'settings' ? 'active' : '' }}">
                         <a href="{{ route('app.settings.index') }}" class='sidebar-link'>

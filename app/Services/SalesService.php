@@ -2,15 +2,16 @@
 
 namespace App\Services;
 
-use App\Http\Requests\ProductRequest;
-use App\Models\Product;
+use App\Http\Requests\SalesRequest;
+use App\Models\Order;
 use App\Services\Cores\BaseService;
 use App\Services\Cores\ErrorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
-class ProductService extends BaseService
+
+class SalesService extends BaseService
 {
     /**
      * Generate query index page
@@ -19,11 +20,11 @@ class ProductService extends BaseService
      */
     private function generate_query_get(Request $request)
     {
-        $column_search = ["product_name", "product_description", "product_price_capital", "product_price_sell"];
-        $column_order = [NULL, "product_name", "product_description", "product_price_capital", "product_price_sell"];
+        $column_search = ["order_number", "order_date", "order_total"];
+        $column_order = [NULL, "order_number", "order_date", "order_total"];
         $order = ["id" => "DESC"];
 
-        $results = Product::query()
+        $results = Order::query()
             ->where(function ($query) use ($request, $column_search) {
                 $i = 1;
                 if (isset($request->search)) {
@@ -66,7 +67,10 @@ class ProductService extends BaseService
 
     public function get_detail($id)
     {
-        return Product::find($id);
+        $results = Order::query()
+            ->where("id", $id)
+            ->first();
+        return $results;
     }
 
     public function get_list_count(Request $request)
@@ -75,53 +79,44 @@ class ProductService extends BaseService
         return $results->count();
     }
 
-    public function store(ProductRequest $request)
+
+    public function store(SalesRequest $request)
     {
         try {
-
             $value = $request->validated();
 
-            Product::create($value);
+            DB::beginTransaction();
 
+            $order = Order::create([
+                'order_number' =>   "ORD" . date("YmdHis"),
+                'order_date' => $value['order_date'],
+            ]);
 
-            $response = \response_success_default("Berhasil menambahkan produk!", false, route("app.products.index"));
+            $order_total = 0;
+
+            foreach ($value['order_items'] as $item) {
+                $itemArray = json_decode($item, true);
+                $order_total += $itemArray['quantity'] * $itemArray['price'];
+
+                $order->order_items()->create([
+                    'product_id' => $itemArray['product_id'],
+                    'quantity' => $itemArray['quantity'],
+                    'price' => $itemArray['price'],
+                    'total' => $itemArray['quantity'] * $itemArray['price'],
+                ]);
+            }
+
+            $order->update(['order_total' => $order_total]);
+
+            DB::commit();
+
+            $response = \response_success_default("Berhasil menambahkan penjualan!", false, route("app.sales.index"));
         } catch (\Exception $e) {
-            ErrorService::error($e, "Gagal store user!");
+            DB::rollBack();
 
-            $response = \response_errors_default();
-        }
+            ErrorService::error($e, 'Gagal store order!');
 
-        return $response;
-    }
-
-    public function update(ProductRequest $request, Product $product)
-    {
-        try {
-            $product = Product::find($product->id);
-
-            $product->update($request->all());
-
-            $response = \response_success_default("Berhasil mengubah produk!", false, route("app.products.index"));
-        } catch (\Exception $e) {
-            ErrorService::error($e, "Gagal update produk!");
-
-            $response = \response_errors_default();
-        }
-
-        return $response;
-    }
-
-    public function delete($id)
-    {
-        try {
-            $product = Product::find($id);
-            $product->delete();
-
-            $response = \response_success_default("Berhasil menghapus produk!");
-        } catch (\Exception $e) {
-            ErrorService::error($e, "Gagal menghapus produk!");
-
-            $response = \response_errors_default();
+            $response = response_errors_default();
         }
 
         return $response;

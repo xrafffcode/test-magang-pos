@@ -49,5 +49,10 @@ class ModuleSeeder extends Seeder
             "module_name" => "Product Management",
             "module_code" => "006P"
         ]);
+
+        Module::create([
+            "module_name" => "Sales Management",
+            "module_code" => "007S"
+        ]);
     }
 }
